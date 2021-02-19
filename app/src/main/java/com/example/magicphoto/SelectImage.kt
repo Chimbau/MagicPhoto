@@ -1,18 +1,16 @@
 package com.example.magicphoto
 
-import android.app.Activity
 import android.app.Activity.RESULT_OK
 import android.content.Intent
 import android.graphics.Bitmap
-import android.media.Image
 import android.os.Bundle
 import android.provider.MediaStore
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.Toast
+import androidx.fragment.app.Fragment
+import java.io.ByteArrayOutputStream
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -20,7 +18,7 @@ private const val ARG_PARAM1 = "param1"
 private const val ARG_PARAM2 = "param2"
 
 const val CAMERA_IMAGE = 1
-
+const val GALLERY_IMAGE = 2
 /**
  * A simple [Fragment] subclass.
  * Use the [SelectImage.newInstance] factory method to
@@ -32,6 +30,7 @@ class SelectImage : Fragment() {
     private var param2: String? = null
 
     private lateinit var cameraButton : ImageView
+    private lateinit var galleryButton : ImageView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,7 +54,7 @@ class SelectImage : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         cameraButton = view.findViewById(R.id.cameraButton)
-        val galleryButton = view.findViewById<ImageView>(R.id.galleryButton)
+        galleryButton = view.findViewById(R.id.galleryButton)
 
 
         cameraButton.setOnClickListener {
@@ -63,6 +62,12 @@ class SelectImage : Fragment() {
             if (cam.resolveActivity(requireContext().packageManager) != null) {
                 startActivityForResult(cam, CAMERA_IMAGE)
             }
+        }
+        galleryButton.setOnClickListener {
+            startActivityForResult(Intent().apply {
+                type = "image/*"
+                action = Intent.ACTION_GET_CONTENT
+            }, GALLERY_IMAGE)
         }
 
     }
@@ -72,9 +77,33 @@ class SelectImage : Fragment() {
 
         if (requestCode == CAMERA_IMAGE && resultCode == RESULT_OK) {
             val imageBitmap = data?.extras?.get("data") as Bitmap
-            cameraButton.setImageBitmap(imageBitmap)
-        }
+//            cameraButton.setImageBitmap(imageBitmap)
 
+            val imageEditor = Intent(this.context, ImageEditor::class.java).apply{
+                putExtra( "image", imageBitmap)
+            }
+            startActivity(imageEditor)
+
+        }else if(requestCode == GALLERY_IMAGE && resultCode == RESULT_OK){
+
+
+            val imageBitmap = MediaStore.Images.Media.getBitmap(
+                context?.contentResolver,
+                data?.data
+            )
+
+            val bs = ByteArrayOutputStream()
+            imageBitmap.compress(Bitmap.CompressFormat.JPEG, 50, bs)
+
+
+//            galleryButton.setImageBitmap(imageBitmap)
+
+            val imageEditor = Intent(this.context, ImageEditor::class.java).apply{
+                putExtra("image", bs.toByteArray())
+            }
+            startActivity(imageEditor)
+
+        }
     }
 
     companion object {
