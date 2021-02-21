@@ -11,18 +11,13 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.view.drawToBitmap
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.RecyclerView
 import com.zomato.photofilters.FilterPack
 import com.zomato.photofilters.imageprocessors.Filter
 import com.zomato.photofilters.utils.ThumbnailItem
 import com.zomato.photofilters.utils.ThumbnailsManager
-
-
-// TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
 
 const val CAMERA_IMAGE = 1
 const val GALLERY_IMAGE = 2
@@ -33,26 +28,18 @@ const val GALLERY_IMAGE = 2
  * create an instance of this fragment.
  */
 class SelectImage : Fragment() {
-    // TODO: Rename and change types of parameters
-    private var param1: String? = null
-    private var param2: String? = null
-
-
     private lateinit var image: ImageView
     private lateinit var cameraButton: ImageView
     private lateinit var galleryButton: ImageView
     private lateinit var recylerView: RecyclerView
 
     private lateinit var thumbnailList: MutableList<ThumbnailItem>
-    private val adapter = FilterListAdapter()
+    private lateinit var adapter : FilterListAdapter
     private lateinit var filters: List<Filter>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        arguments?.let {
-            param1 = it.getString(ARG_PARAM1)
-            param2 = it.getString(ARG_PARAM2)
-        }
+
         System.loadLibrary("NativeImageProcessor");
 
 
@@ -69,6 +56,7 @@ class SelectImage : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         image = view.findViewById(R.id.image)
+        adapter = FilterListAdapter(image)
         cameraButton = view.findViewById(R.id.cameraButton)
         galleryButton = view.findViewById(R.id.galleryButton)
         recylerView = view.findViewById(R.id.recyler_list)
@@ -141,33 +129,33 @@ class SelectImage : Fragment() {
                 item.filterName = filter.name
                 ThumbnailsManager.addThumb(item)
             }
+            image.setImageBitmap(imageBitmap)
 
             thumbnailList.clear()
             thumbnailList.addAll(ThumbnailsManager.processThumbs(activity))
             adapter.setData(thumbnailList)
 
-            image.setImageBitmap(imageBitmap)
 
         }
     }
 
-    companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
-         * @return A new instance of fragment SelectImage.
-         */
-        // TODO: Rename and change types and number of parameters
-        @JvmStatic
-        fun newInstance(param1: String, param2: String) =
-            SelectImage().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_PARAM1, param1)
-                    putString(ARG_PARAM2, param2)
-                }
-            }
-    }
+//    companion object {
+//        /**
+//         * Use this factory method to create a new instance of
+//         * this fragment using the provided parameters.
+//         *
+//         * @param param1 Parameter 1.
+//         * @param param2 Parameter 2.
+//         * @return A new instance of fragment SelectImage.
+//         */
+//        // TODO: Rename and change types and number of parameters
+//        @JvmStatic
+//        fun newInstance(param1: String, param2: String) =
+//            SelectImage().apply {
+//                arguments = Bundle().apply {
+//                    putString(ARG_PARAM1, param1)
+//                    putString(ARG_PARAM2, param2)
+//                }
+//            }
+//    }
 }
