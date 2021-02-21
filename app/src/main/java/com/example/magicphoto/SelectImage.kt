@@ -9,8 +9,15 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import androidx.appcompat.content.res.AppCompatResources
+import androidx.core.graphics.drawable.toBitmap
 import androidx.fragment.app.Fragment
-import java.io.ByteArrayOutputStream
+import androidx.recyclerview.widget.RecyclerView
+import com.zomato.photofilters.FilterPack
+import com.zomato.photofilters.imageprocessors.Filter
+import com.zomato.photofilters.utils.ThumbnailItem
+import com.zomato.photofilters.utils.ThumbnailsManager
+
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -19,6 +26,7 @@ private const val ARG_PARAM2 = "param2"
 
 const val CAMERA_IMAGE = 1
 const val GALLERY_IMAGE = 2
+
 /**
  * A simple [Fragment] subclass.
  * Use the [SelectImage.newInstance] factory method to
@@ -29,8 +37,15 @@ class SelectImage : Fragment() {
     private var param1: String? = null
     private var param2: String? = null
 
-    private lateinit var cameraButton : ImageView
-    private lateinit var galleryButton : ImageView
+
+    private lateinit var image: ImageView
+    private lateinit var cameraButton: ImageView
+    private lateinit var galleryButton: ImageView
+    private lateinit var recylerView: RecyclerView
+
+    private lateinit var thumbnailList: MutableList<ThumbnailItem>
+    private val adapter = FilterListAdapter()
+    private lateinit var filters: List<Filter>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,7 +53,7 @@ class SelectImage : Fragment() {
             param1 = it.getString(ARG_PARAM1)
             param2 = it.getString(ARG_PARAM2)
         }
-
+        System.loadLibrary("NativeImageProcessor");
 
 
     }
@@ -53,8 +68,11 @@ class SelectImage : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        image = view.findViewById(R.id.image)
         cameraButton = view.findViewById(R.id.cameraButton)
         galleryButton = view.findViewById(R.id.galleryButton)
+        recylerView = view.findViewById(R.id.recyler_list)
+        filters  = FilterPack.getFilterPack(activity)
 
 
         cameraButton.setOnClickListener {
@@ -70,6 +88,26 @@ class SelectImage : Fragment() {
             }, GALLERY_IMAGE)
         }
 
+
+        thumbnailList = mutableListOf()
+
+        for (filter in filters) {
+
+            val item = ThumbnailItem()
+            item.image = AppCompatResources.getDrawable(
+                requireContext(),
+                R.drawable.camera1
+            )!!.toBitmap()
+
+            item.filter = filter
+            item.filterName = filter.name
+            ThumbnailsManager.addThumb(item)
+        }
+
+        thumbnailList.addAll(ThumbnailsManager.processThumbs(activity))
+        adapter.setData(thumbnailList)
+        recylerView.adapter = adapter
+
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -79,12 +117,12 @@ class SelectImage : Fragment() {
             val imageBitmap = data?.extras?.get("data") as Bitmap
 //            cameraButton.setImageBitmap(imageBitmap)
 
-            val imageEditor = Intent(this.context, ImageEditor::class.java).apply{
-                putExtra( "image", imageBitmap)
+            val imageEditor = Intent(this.context, ImageEditor::class.java).apply {
+                putExtra("image", imageBitmap)
             }
             startActivity(imageEditor)
 
-        }else if(requestCode == GALLERY_IMAGE && resultCode == RESULT_OK){
+        } else if (requestCode == GALLERY_IMAGE && resultCode == RESULT_OK) {
 
 
             val imageBitmap = MediaStore.Images.Media.getBitmap(
@@ -92,16 +130,23 @@ class SelectImage : Fragment() {
                 data?.data
             )
 
-            val bs = ByteArrayOutputStream()
-            imageBitmap.compress(Bitmap.CompressFormat.JPEG, 50, bs)
 
+            ThumbnailsManager.clearThumbs()
 
-//            galleryButton.setImageBitmap(imageBitmap)
+            for (filter in filters) {
 
-            val imageEditor = Intent(this.context, ImageEditor::class.java).apply{
-                putExtra("image", bs.toByteArray())
+                val item = ThumbnailItem()
+                item.image = imageBitmap
+                item.filter = filter
+                item.filterName = filter.name
+                ThumbnailsManager.addThumb(item)
             }
-            startActivity(imageEditor)
+
+            thumbnailList.clear()
+            thumbnailList.addAll(ThumbnailsManager.processThumbs(activity))
+            adapter.setData(thumbnailList)
+
+            image.setImageBitmap(imageBitmap)
 
         }
     }
