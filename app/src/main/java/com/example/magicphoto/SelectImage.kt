@@ -3,11 +3,13 @@ package com.example.magicphoto
 import android.app.Activity.RESULT_OK
 import android.content.Intent
 import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.ImageView
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.drawable.toBitmap
@@ -18,6 +20,9 @@ import com.zomato.photofilters.FilterPack
 import com.zomato.photofilters.imageprocessors.Filter
 import com.zomato.photofilters.utils.ThumbnailItem
 import com.zomato.photofilters.utils.ThumbnailsManager
+import java.io.File
+import java.io.FileOutputStream
+import java.io.OutputStream
 
 const val CAMERA_IMAGE = 1
 const val GALLERY_IMAGE = 2
@@ -29,6 +34,7 @@ const val GALLERY_IMAGE = 2
  */
 class SelectImage : Fragment() {
     private lateinit var image: ImageView
+    private lateinit var save_button: Button
     private lateinit var cameraButton: ImageView
     private lateinit var galleryButton: ImageView
     private lateinit var recylerView: RecyclerView
@@ -56,6 +62,7 @@ class SelectImage : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         image = view.findViewById(R.id.image)
+        save_button = view.findViewById(R.id.save_button)
         adapter = FilterListAdapter(image)
         cameraButton = view.findViewById(R.id.cameraButton)
         galleryButton = view.findViewById(R.id.galleryButton)
@@ -74,6 +81,18 @@ class SelectImage : Fragment() {
                 type = "image/*"
                 action = Intent.ACTION_GET_CONTENT
             }, GALLERY_IMAGE)
+        }
+
+        save_button.setOnClickListener{
+            val im = File.createTempFile("image",".png")
+            val stream = FileOutputStream(im)
+            image.drawToBitmap().compress(Bitmap.CompressFormat.PNG, 100, stream)
+
+            val fileIntent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE).also { mediaScanIntent ->
+                mediaScanIntent.data = Uri.fromFile(im)
+//                sendBroadcast(mediaScanIntent)
+            }
+
         }
 
 

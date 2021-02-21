@@ -13,4 +13,6 @@
         tools:layout_editor_absoluteX="177dp"
         tools:layout_editor_absoluteY="177dp" >
     </androidx.viewpager2.widget.ViewPager2>
+
+
 </androidx.constraintlayout.widget.ConstraintLayout>
