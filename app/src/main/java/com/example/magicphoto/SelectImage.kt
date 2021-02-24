@@ -9,12 +9,10 @@ import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.drawable.toBitmap
-import androidx.core.view.drawToBitmap
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.RecyclerView
 import com.zomato.photofilters.FilterPack
@@ -30,10 +28,11 @@ class SelectImage : Fragment() {
     private lateinit var imageBitmap : Bitmap
     private lateinit var filteredBitmap : Bitmap
     private lateinit var save_button: ImageView
+    private lateinit var addButton : ImageView
+    private lateinit var discardButton : ImageView
     private lateinit var cameraButton: ImageView
     private lateinit var galleryButton: ImageView
     private lateinit var recylerView: RecyclerView
-
     private lateinit var thumbnailList: MutableList<ThumbnailItem>
     private lateinit var adapter : FilterListAdapter
     private lateinit var filters: List<Filter>
@@ -41,14 +40,12 @@ class SelectImage : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         System.loadLibrary("NativeImageProcessor");
-
     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // Inflate the layout for this fragment
         return inflater.inflate(R.layout.fragment_select_image, container, false)
     }
 
@@ -58,6 +55,8 @@ class SelectImage : Fragment() {
         imageBitmap = BitmapFactory.decodeResource(context?.getResources(), R.drawable.default_picture);
         filteredBitmap = imageBitmap
         save_button = view.findViewById(R.id.arrow_button)
+        addButton = view.findViewById(R.id.check_button)
+        discardButton = view.findViewById(R.id.cross_button)
         cameraButton = view.findViewById(R.id.cameraButton)
         galleryButton = view.findViewById(R.id.galleryButton)
         recylerView = view.findViewById(R.id.recyler_list)
@@ -77,8 +76,25 @@ class SelectImage : Fragment() {
             }, GALLERY_IMAGE)
         }
 
+        addButton.setOnClickListener {
+            imageBitmap = filteredBitmap
+            updateImages(imageBitmap)
+            Toast.makeText(requireContext(), "Filter Applied", Toast.LENGTH_SHORT).show()
+        }
+
         save_button.setOnClickListener{
+
+//              startActivity(Intent(requireContext(), SaveShareActivity::class.java).apply{
+//                  putExtra("image", imageBitmap)
+//              })
+
               saveImage()
+        }
+
+        discardButton.setOnClickListener {
+            imageBitmap = BitmapFactory.decodeResource(context?.getResources(), R.drawable.default_picture);
+            filteredBitmap = imageBitmap
+            updateImages(imageBitmap)
         }
 
         thumbnailList = mutableListOf()
@@ -96,6 +112,7 @@ class SelectImage : Fragment() {
             ThumbnailsManager.addThumb(item)
         }
 
+
         thumbnailList.addAll(ThumbnailsManager.processThumbs(activity))
 
         adapter = FilterListAdapter(::filterClick)
@@ -110,24 +127,23 @@ class SelectImage : Fragment() {
         if (requestCode == CAMERA_IMAGE && resultCode == RESULT_OK) {
             imageBitmap = data?.extras?.get("data") as Bitmap
             filteredBitmap = imageBitmap
-            makeThumbNails(imageBitmap)
+            updateImages(imageBitmap)
 
 
         } else if (requestCode == GALLERY_IMAGE && resultCode == RESULT_OK) {
-
 
             imageBitmap = MediaStore.Images.Media.getBitmap(
                 context?.contentResolver,
                 data?.data
             )
             filteredBitmap = imageBitmap
-            makeThumbNails(imageBitmap)
+            updateImages(imageBitmap)
 
         }
     }
 
 
-    private fun makeThumbNails(imageBitmap: Bitmap){
+    private fun updateImages(imageBitmap: Bitmap){
         ThumbnailsManager.clearThumbs()
 
         for (filter in filters) {
