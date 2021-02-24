@@ -1,9 +1,13 @@
 package com.example.magicphoto
 
+import android.Manifest
 import android.app.Activity.RESULT_OK
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.LayoutInflater
@@ -12,6 +16,9 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources
+import androidx.core.app.ActivityCompat
+import androidx.core.content.PermissionChecker
+import androidx.core.content.PermissionChecker.checkSelfPermission
 import androidx.core.graphics.drawable.toBitmap
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.RecyclerView
@@ -19,6 +26,8 @@ import com.zomato.photofilters.FilterPack
 import com.zomato.photofilters.imageprocessors.Filter
 import com.zomato.photofilters.utils.ThumbnailItem
 import com.zomato.photofilters.utils.ThumbnailsManager
+import java.net.URI
+
 
 const val CAMERA_IMAGE = 1
 const val GALLERY_IMAGE = 2
@@ -32,6 +41,7 @@ class SelectImage : Fragment() {
     private lateinit var discardButton : ImageView
     private lateinit var cameraButton: ImageView
     private lateinit var galleryButton: ImageView
+    private lateinit var shareButton: ImageView
     private lateinit var recylerView: RecyclerView
     private lateinit var thumbnailList: MutableList<ThumbnailItem>
     private lateinit var adapter : FilterListAdapter
@@ -60,6 +70,8 @@ class SelectImage : Fragment() {
         cameraButton = view.findViewById(R.id.cameraButton)
         galleryButton = view.findViewById(R.id.galleryButton)
         recylerView = view.findViewById(R.id.recyler_list)
+        shareButton = view.findViewById(R.id.share_button)
+
         filters  = FilterPack.getFilterPack(activity)
 
 
@@ -95,6 +107,18 @@ class SelectImage : Fragment() {
             imageBitmap = BitmapFactory.decodeResource(context?.getResources(), R.drawable.default_picture);
             filteredBitmap = imageBitmap
             updateImages(imageBitmap)
+        }
+
+        shareButton.setOnClickListener{
+            if(isStoragePermissionGranted()){
+                val imageURI = Uri.parse(MediaStore.Images.Media.insertImage(activity?.contentResolver, filteredBitmap, System.currentTimeMillis().toString() + ".jpg", "description"));
+                val shareIntent: Intent = Intent().apply {
+                    action = Intent.ACTION_SEND
+                    putExtra(Intent.EXTRA_STREAM, imageURI)
+                    type = "image/*"
+                }
+                startActivity(Intent.createChooser(shareIntent, "Share with:"))
+            }
         }
 
         thumbnailList = mutableListOf()
@@ -163,6 +187,38 @@ class SelectImage : Fragment() {
     private fun filterClick(imageBitmap: Bitmap){
         image.setImageBitmap(imageBitmap)
         filteredBitmap = imageBitmap
+    }
+    private fun isStoragePermissionGranted(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (checkSelfPermission(this.context!!,Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                === PermissionChecker.PERMISSION_GRANTED
+            ) {
+
+                true
+            } else {
+                Toast.makeText(this.context, "Couldn't save file, permission not granted", Toast.LENGTH_LONG).show()
+                ActivityCompat.requestPermissions(
+                    requireActivity(),
+                    arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                    1
+                )
+                false
+            }
+        } else { //permission is automatically granted on sdk<23 upon installation
+            true
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (grantResults.size > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this.context, "Permission: " + permissions[0] + "was " + grantResults[0], Toast.LENGTH_LONG).show()
+            //resume tasks needing this permission
+        }
     }
 
     private fun saveImage() {

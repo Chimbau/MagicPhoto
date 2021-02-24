@@ -23,6 +23,7 @@ class FilterListAdapter(private val filterClick: (Bitmap) -> Unit)
     inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val filterIcon = view.findViewById<ImageView>(R.id.filter_icon)
         val filterText = view.findViewById<TextView>(R.id.filter_text)
+
     }
     private var bitmap : Bitmap? = null
 
