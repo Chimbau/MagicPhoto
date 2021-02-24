@@ -13,11 +13,12 @@ import com.zomato.photofilters.imageprocessors.Filter
 import com.zomato.photofilters.utils.ThumbnailItem
 
 
-class FilterListAdapter(var image : ImageView)
+class FilterListAdapter(private val filterClick: (Bitmap) -> Unit)
     : RecyclerView.Adapter<FilterListAdapter.ViewHolder>() {
 
-    var filterList: List<ThumbnailItem> = listOf()
+    private lateinit var imageBitmap: Bitmap
 
+    var filterList: List<ThumbnailItem> = listOf()
 
     inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val filterIcon = view.findViewById<ImageView>(R.id.filter_icon)
@@ -44,20 +45,14 @@ class FilterListAdapter(var image : ImageView)
         holder.filterText.text = filterList[position].filterName
 
         holder.itemView.setOnClickListener{
-            if(bitmap == null){
-                bitmap = image.drawToBitmap()
-            }
-            val new_bitmap = bitmap?.copy(bitmap?.config, true)
-
-            image.setImageBitmap(filterList[position].filter.processFilter(new_bitmap))
+             val newBitmap = imageBitmap.copy(imageBitmap.config, true)
+             filterClick.invoke(filterList[position].filter.processFilter(newBitmap))
         }
     }
 
-    fun setData(list : MutableList<ThumbnailItem>){
+    fun setData(list : MutableList<ThumbnailItem>, imageBitmap: Bitmap){
         this.filterList = list
-        if(bitmap!=null){
-            bitmap = image.drawToBitmap()
-        }
+        this.imageBitmap = imageBitmap
         notifyDataSetChanged()
     }
 

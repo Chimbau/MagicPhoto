@@ -3,7 +3,7 @@ package com.example.magicphoto
 import android.app.Activity.RESULT_OK
 import android.content.Intent
 import android.graphics.Bitmap
-import android.net.Uri
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.LayoutInflater
@@ -11,6 +11,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageView
+import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.view.drawToBitmap
@@ -20,21 +21,15 @@ import com.zomato.photofilters.FilterPack
 import com.zomato.photofilters.imageprocessors.Filter
 import com.zomato.photofilters.utils.ThumbnailItem
 import com.zomato.photofilters.utils.ThumbnailsManager
-import java.io.File
-import java.io.FileOutputStream
-import java.io.OutputStream
 
 const val CAMERA_IMAGE = 1
 const val GALLERY_IMAGE = 2
 
-/**
- * A simple [Fragment] subclass.
- * Use the [SelectImage.newInstance] factory method to
- * create an instance of this fragment.
- */
 class SelectImage : Fragment() {
     private lateinit var image: ImageView
-    private lateinit var save_button: Button
+    private lateinit var imageBitmap : Bitmap
+    private lateinit var filteredBitmap : Bitmap
+    private lateinit var save_button: ImageView
     private lateinit var cameraButton: ImageView
     private lateinit var galleryButton: ImageView
     private lateinit var recylerView: RecyclerView
@@ -45,9 +40,7 @@ class SelectImage : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         System.loadLibrary("NativeImageProcessor");
-
 
     }
 
@@ -62,8 +55,9 @@ class SelectImage : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         image = view.findViewById(R.id.image)
-        save_button = view.findViewById(R.id.save_button)
-        adapter = FilterListAdapter(image)
+        imageBitmap = BitmapFactory.decodeResource(context?.getResources(), R.drawable.default_picture);
+        filteredBitmap = imageBitmap
+        save_button = view.findViewById(R.id.arrow_button)
         cameraButton = view.findViewById(R.id.cameraButton)
         galleryButton = view.findViewById(R.id.galleryButton)
         recylerView = view.findViewById(R.id.recyler_list)
@@ -84,17 +78,8 @@ class SelectImage : Fragment() {
         }
 
         save_button.setOnClickListener{
-            val im = File.createTempFile("image",".png")
-            val stream = FileOutputStream(im)
-            image.drawToBitmap().compress(Bitmap.CompressFormat.PNG, 100, stream)
-
-            val fileIntent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE).also { mediaScanIntent ->
-                mediaScanIntent.data = Uri.fromFile(im)
-//                sendBroadcast(mediaScanIntent)
-            }
-
+              saveImage()
         }
-
 
         thumbnailList = mutableListOf()
 
@@ -103,7 +88,7 @@ class SelectImage : Fragment() {
             val item = ThumbnailItem()
             item.image = AppCompatResources.getDrawable(
                 requireContext(),
-                R.drawable.camera1
+                R.drawable.default_picture
             )!!.toBitmap()
 
             item.filter = filter
@@ -112,7 +97,9 @@ class SelectImage : Fragment() {
         }
 
         thumbnailList.addAll(ThumbnailsManager.processThumbs(activity))
-        adapter.setData(thumbnailList)
+
+        adapter = FilterListAdapter(::filterClick)
+        adapter.setData(thumbnailList, imageBitmap)
         recylerView.adapter = adapter
 
     }
@@ -121,60 +108,88 @@ class SelectImage : Fragment() {
         super.onActivityResult(requestCode, resultCode, data)
 
         if (requestCode == CAMERA_IMAGE && resultCode == RESULT_OK) {
-            val imageBitmap = data?.extras?.get("data") as Bitmap
-//            cameraButton.setImageBitmap(imageBitmap)
+            imageBitmap = data?.extras?.get("data") as Bitmap
+            filteredBitmap = imageBitmap
+            makeThumbNails(imageBitmap)
 
-            val imageEditor = Intent(this.context, ImageEditor::class.java).apply {
-                putExtra("image", imageBitmap)
-            }
-            startActivity(imageEditor)
 
         } else if (requestCode == GALLERY_IMAGE && resultCode == RESULT_OK) {
 
 
-            val imageBitmap = MediaStore.Images.Media.getBitmap(
+            imageBitmap = MediaStore.Images.Media.getBitmap(
                 context?.contentResolver,
                 data?.data
             )
-
-
-            ThumbnailsManager.clearThumbs()
-
-            for (filter in filters) {
-
-                val item = ThumbnailItem()
-                item.image = imageBitmap
-                item.filter = filter
-                item.filterName = filter.name
-                ThumbnailsManager.addThumb(item)
-            }
-            image.setImageBitmap(imageBitmap)
-
-            thumbnailList.clear()
-            thumbnailList.addAll(ThumbnailsManager.processThumbs(activity))
-            adapter.setData(thumbnailList)
-
+            filteredBitmap = imageBitmap
+            makeThumbNails(imageBitmap)
 
         }
     }
 
-//    companion object {
-//        /**
-//         * Use this factory method to create a new instance of
-//         * this fragment using the provided parameters.
-//         *
-//         * @param param1 Parameter 1.
-//         * @param param2 Parameter 2.
-//         * @return A new instance of fragment SelectImage.
-//         */
-//        // TODO: Rename and change types and number of parameters
-//        @JvmStatic
-//        fun newInstance(param1: String, param2: String) =
-//            SelectImage().apply {
-//                arguments = Bundle().apply {
-//                    putString(ARG_PARAM1, param1)
-//                    putString(ARG_PARAM2, param2)
-//                }
-//            }
-//    }
+
+    private fun makeThumbNails(imageBitmap: Bitmap){
+        ThumbnailsManager.clearThumbs()
+
+        for (filter in filters) {
+            val item = ThumbnailItem()
+            item.image = imageBitmap
+            item.filter = filter
+            item.filterName = filter.name
+            ThumbnailsManager.addThumb(item)
+        }
+        image.setImageBitmap(imageBitmap)
+
+        thumbnailList.clear()
+        thumbnailList.addAll(ThumbnailsManager.processThumbs(activity))
+        adapter.setData(thumbnailList, imageBitmap)
+    }
+
+    private fun filterClick(imageBitmap: Bitmap){
+        image.setImageBitmap(imageBitmap)
+        filteredBitmap = imageBitmap
+    }
+
+    private fun saveImage() {
+
+
+          MediaStore.Images.Media.insertImage(activity?.contentResolver, filteredBitmap, System.currentTimeMillis().toString() + ".jpg", "description");
+          Toast.makeText(requireContext(), "Successfuly Saved", Toast.LENGTH_SHORT).show()
+
+
+
+//        val dir = File(context?.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "SaveImage")
+//
+//        if (!dir.exists()){
+//            dir.mkdir();
+//        }
+//
+//        val file = File(dir, System.currentTimeMillis().toString() + ".jpg")
+//        var  outputStream : OutputStream? = null
+//        try {
+//            outputStream = FileOutputStream(file)
+//        } catch (e: FileNotFoundException) {
+//            e.printStackTrace()
+//        }
+//
+//        image.drawToBitmap().compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+//
+//        Toast.makeText(requireContext(), "Successfuly Saved", Toast.LENGTH_SHORT).show()
+//
+//        try {
+//            outputStream?.flush()
+//        } catch (e: IOException) {
+//            e.printStackTrace()
+//        }
+//        try {
+//            outputStream?.close()
+//        } catch (e: IOException) {
+//            e.printStackTrace()
+//        }
+//
+//        MediaScannerConnection.scanFile(context, arrayOf(file.toString()), null,
+//            OnScanCompletedListener { path, uri ->
+//            })
+    }
+
+
 }
